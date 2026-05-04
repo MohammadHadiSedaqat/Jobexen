@@ -160,14 +160,15 @@
 #         return {"status": "success" , "added_skills": results}
 #
 #
-
+from tabnanny import check
 from typing import List, Any
 import jwt
 from fastapi import HTTPException, status
 import traceback
 import random
 from src.repositories.user_repository import UserRepository
-from src.api.response_models.schemas.user import UserCreate, ExperienceCreate, UserSkillCreate, UserUpdate
+from src.api.response_models.schemas.user import UserCreate, ExperienceCreate, UserSkillCreate, UserUpdate, \
+    ExperienceUpdate, UserSkillUpdate
 from src.services.mail_service import GmailMailService
 
 
@@ -198,14 +199,14 @@ class UserService:
             return created_user
 
         except Exception as e:
-            print("error")
+            print("❌ زینب ارور واقعی اینجاست:")
             traceback.print_exc()
             if isinstance(e, HTTPException):
                 raise e
             raise HTTPException(status_code=500, detail=str(e))
 
     def login_user(self, identifier, plain_password):
-        from src.services.auth import AuthService
+        from src.services.auth import AuthService  # ایمپورت محلی
         try:
             existing_user = self.user_repo.get_by_username(identifier)
             if not existing_user:
@@ -217,6 +218,7 @@ class UserService:
                     detail="نام کاربری یا ایمیل اشتباه است"
                 )
 
+            # چک کردن پسورد با استفاده از AuthService
             is_password_correct = AuthService.verify_password(plain_password, existing_user['password'])
             if not is_password_correct:
                 raise HTTPException(
@@ -233,11 +235,13 @@ class UserService:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="خطا در ورود")
 
     def login_for_access_token(self, identifier, password):
+        # ۱. ایمپورت رو همین‌جا داخل متد انجام بده
         from src.services.auth import AuthService
 
         user = self.login_user(identifier, password)
         token_data = {"sub": str(user["id"])}
 
+        # ۲. اینجا بنویس AuthService (بدون self.)
         access_token = AuthService.create_access_token(data=token_data)
 
         return {
@@ -329,3 +333,77 @@ class UserService:
         await self.user_repo.update_user(user_id, update_dict)
 
         return await self.get_user_profile(user_id)
+
+    async def update_user_experience(self,experience_id :int ,user_id: int, experience: ExperienceUpdate):
+
+        update_dict = experience.model_dump(exclude_unset=True)
+
+        if not update_dict:
+            raise HTTPException(status_code=400 , detail="No Data Provided to update")
+
+        updated_exp = await self.user_repo.update_experience(
+            experience_id=experience_id,
+            user_id=user_id,
+            exp_data=update_dict
+        )
+
+        if not updated_exp:
+            raise HTTPException(
+                status_code=404,
+                detail="Experience not found or you don't have permission to edit it"
+            )
+        return updated_exp
+
+    async def update_user_skills(self,user_id: int, old_skill_id: int, skill_data:UserSkillUpdate ):
+        update_dict = skill_data.model_dump(exclude_unset=True)
+        if not update_dict:
+            raise HTTPException(status_code=400 , detail="No Data Provided to update")
+
+        check_query = "select * from user_skills where user_id =%s and  skill_id =%s"
+        existing_link = await self.user_repo.execute_query_fetchone(check_query, (user_id, old_skill_id))
+        if not existing_link:
+            raise HTTPException(status_code=404, detail="این مهارت در لیست شما پیدا نشد.")
+
+        current_skill_id = old_skill_id
+        if "skill_name" in update_dict:
+            new_skill_name = update_dict.pop("skill_name")
+            current_skill_id = await self.user_repo.get_or_create_skill_by_name(new_skill_name)
+
+        updated_res=await self.user_repo.update_user_skills(
+            user_id=user_id,
+            skill_id=old_skill_id,
+            skill_data=update_dict
+        )
+
+        if current_skill_id != old_skill_id:
+            swap_query = "UPDATE user_skills SET skill_id = %s WHERE user_id = %s AND skill_id = %s"
+            await self.user_repo.execute_query(swap_query, (current_skill_id, user_id, old_skill_id))
+
+        return {"status": "success", "message": "مهارت با موفقیت به‌روزرسانی شد."}
+
+    async def delete_profile(self , user_id: int):
+        deleted_profile = await self.user_repo.delete_user_profile(user_id)
+        if not deleted_profile:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        return {"status": "success", "message": "پروفایل و تمامی اطلاعات شما با موفقیت حذف شد."}
+
+    async def delete_experience(self,user_id: int, experience_id:int):
+        deleted_exp = await self.user_repo.delete_experience(user_id, experience_id)
+        if not deleted_exp:
+            raise HTTPException(status_code=404, detail="Experience not found")
+        return {"message":"تجربه کاری شما با موفقیت حذف شد"}
+
+    async def delete_skill(self,user_id: int, skill_id:int):
+        deleted_skill= await self.user_repo.delete_user_skills(user_id, skill_id)
+        if not deleted_skill:
+            raise HTTPException(status_code=404, detail="Skill not found")
+        return {"message": "مهارت با موفقیت از پروفایل شما حذف شد."}
+
+
+
+
+
+
+
+
+

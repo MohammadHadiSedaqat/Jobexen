@@ -55,8 +55,6 @@ class Settings(BaseSettings):
         case_sensitive=True
     )
 
-
-
     def __init__(self, **values):
         super().__init__(**values)
         if not self.DATABASE_URL:

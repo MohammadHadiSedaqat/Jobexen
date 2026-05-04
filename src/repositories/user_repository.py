@@ -258,3 +258,94 @@ class UserRepository:
         updated_user =await self.execute_query_fetchone(query, params)
         return updated_user
 
+    async def update_experience(self, experience_id: int, user_id: int, exp_data: dict):
+        if not exp_data:
+            return
+        set_clauses = []
+        for key in exp_data.keys():
+            set_clauses.append(f"{key} = %({key})s")
+
+        set_query = ",".join(set_clauses)
+        query = f"update user_experiences set {set_query} WHERE user_id = %(user_id)s AND id = %(experience_id)s RETURNING *"
+
+        params = exp_data.copy()
+        params['experience_id'] = experience_id
+        params['user_id'] = user_id
+
+        updated_experience = await self.execute_query_fetchone(query, params)
+        return updated_experience
+
+    async def update_user_skills(self, user_id: int,skill_id:int, skill_data: dict):
+        if not skill_data:
+            return None
+        set_clauses = []
+        for key in skill_data.keys():
+            set_clauses.append(f"{key} = %({key})s")
+
+        set_query = ",".join(set_clauses)
+
+        query= f"update user_skills set {set_query} where user_id = %(user_id)s and skill_id =%(skill_id)s RETURNING *"
+
+        params = skill_data.copy()
+        params['user_id'] = user_id
+        params['skill_id'] = skill_id
+
+        updated_user_skills = await self.execute_query_fetchone(query, params)
+        return updated_user_skills
+
+    async def  get_or_create_skill_by_name(self, skill_name:str)->int:
+        query = """
+                INSERT INTO skills (name)
+                VALUES (%s) ON CONFLICT (name) DO 
+                UPDATE SET name = EXCLUDED.name 
+                    RETURNING id; 
+                """
+
+        conn=self.get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        try:
+            cursor.execute(query, (skill_name,))
+            result = cursor.fetchone()
+            return result["id"]
+        finally:
+            cursor.close()
+            conn.close()
+
+    async def delete_user_profile(self, user_id: int):
+        query = "DELETE FROM users WHERE id = %s RETURNING *"
+        return await self.execute_query_fetchone(query, (user_id,))
+
+    async def delete_experience(self, user_id: int, experience_id:int):
+        query = "DELETE FROM experiences WHERE id = %s AND user_id = %s RETURNING id"
+        return await self.execute_query_fetchone(query, (experience_id, user_id))
+
+    async def delete_user_skills(self, user_id: int, skill_id:int):
+        query = "delete from user_skills where user_id = %s AND skill_id = %s returning skill_id"
+        return await self.execute_query_fetchone(query, (skill_id, user_id))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

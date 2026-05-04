@@ -1,22 +1,20 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 import re
-from decimal import Decimal
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 
-
 class UserBase(BaseModel):
-    username: str = Field(..., example="")
-    email: EmailStr = Field(..., example="")
-    full_name: Optional[str] = Field(None, example="")
-    city: Optional[str] = Field(None, example="")
-    bio: Optional[str] = Field(None, max_length=250, example="")
-    phone_number: Optional[str] = Field(None, example="")
+    username: str
+    email: EmailStr
+    full_name: Optional[str] = None
+    city: Optional[str] = None
+    bio: Optional[str] = Field(None, max_length=250)
+    phone_number: Optional[str] = Field(None, min_length=11 , max_length=11)
 
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=8, example="")
+    password: str = Field(..., min_length=8)
 
     @field_validator("password")
     @classmethod
@@ -100,17 +98,48 @@ class SkillLevel(str, Enum):
 
 class ExperienceCreate(BaseModel):
     job_title: str = Field(..., min_length=3, max_length=100)
-    company_name: Optional[str] = None
+    company_name: Optional[str] = Field(None, max_length=100)
     employment_type:EmploymentType =EmploymentType.FULL_TIME
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     description: Optional[str] = None
 
 
+class ExperienceUpdate(BaseModel):
+    job_title: Optional[str] = Field(None, min_length=3, max_length=100)
+    company_name: Optional[str] = Field(None, max_length=100)
+    employment_type: EmploymentType = EmploymentType.FULL_TIME
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    description: Optional[str] = None
+
+
+class ExperienceResponse(BaseModel):
+    id:int
+    job_title: str
+    company_name: Optional[str] = None
+    employment_type: EmploymentType = EmploymentType.FULL_TIME
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class UserSkillCreate(BaseModel):
     skill_name: str = Field(..., min_length=3, max_length=100)
     level: SkillLevel = SkillLevel.beginner
     description: Optional[str] = None
+
+class UserSkillUpdate(BaseModel):
+    skill_id:int
+    skill_name: Optional[str] = Field(None, min_length=3, max_length=100)
+    level: Optional[SkillLevel] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class UserProfileResponse(UserResponse):
@@ -131,33 +160,6 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
 
 
-class BillingCycle(str, Enum):
-    monthly = 'monthly'
-    six_months = '6_months'
-    yearly = 'yearly'
-
-
-class SubscriptionPlan(BaseModel):
-    name: str = Field(..., max_length=50, example="")
-    description: Optional[str] = Field(None, max_length=100, example="")
-    price: Decimal = Field(..., max_digits=10, decimal_places=2, example="")
-    billing_cycle: BillingCycle
-    features: Optional[Dict[str, Any]] = None
-    status: str = "active"
-
-
-class SubscriptionPlanCreate(SubscriptionPlan):
-    pass
-
-
-class SubscriptionPlanResponse(SubscriptionPlan):
-    plan_id: int
-    created_at: datetime
-    updated_at: datetime
 
 
 
-
-
-    class Config:
-        from_attributes = True
