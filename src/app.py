@@ -1,23 +1,24 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.endpoints.v1 import user_router
+from src.api.endpoints.v1 import user_router, subscription_router
 from src.connections.sync_postgres import get_db_connection
 from src.data.models import get_schema_queries
 from fastapi_swagger import patch_fastapi
 
-# app = FastAPI(
-#     title="Jabexen API",
-#     description="پلتفرم تخصص محور برای متخصصان و بلاگر های فنی",
-#     version="1.0,0",
-# )
 app = FastAPI(
     title="Jobexen API",
     description="پلتفرم تخصص محور برای متخصصان و بلاگر های فنی",
     version="1.0,0",
-    docs_url=None,
-    swagger_ui_oauth2_redirect_url=None
 )
-patch_fastapi(app, docs_url="/swagger")
+
+# app = FastAPI(
+#     title="Jobexen API",
+#     description="پلتفرم تخصص محور برای متخصصان و بلاگر های فنی",
+#     version="1.0,0",
+#     docs_url=None,
+#     swagger_ui_oauth2_redirect_url=None
+# )
+# patch_fastapi(app, docs_url="/swagger")
 
 
 app.add_middleware(
@@ -31,6 +32,8 @@ app.add_middleware(
 app.include_router(user_router.router , prefix="/api/v1")
 
 app.include_router(user_router.profile_router , prefix="/api/v1")
+
+app.include_router(subscription_router.router , prefix="/api/v1")
 
 
 @app.on_event("startup")

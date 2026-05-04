@@ -176,4 +176,3 @@ def get_schema_queries():
         """
     }
 
-#در ستون jobs هنوز یوزر ایدی و فیچر on delete cascade نزاشتم باید این رو در اینده درست کنم!
