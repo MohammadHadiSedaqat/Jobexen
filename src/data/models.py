@@ -173,6 +173,38 @@ def get_schema_queries():
                 required_skills TEXT[], 
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+<<<<<<< HEAD
         """
     }
 
+=======
+        """,
+
+        "user_subscriptions": """
+            CREATE TABLE IF NOT EXISTS user_subscriptions (
+                user_subscription_id SERIAL PRIMARY KEY,
+                plan_id INTEGER REFERENCES subscription_plans(plan_id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                status VARCHAR(20) CHECK (status IN ('active','cancelled','expired')) DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_date TIMESTAMP,
+                payment_method VARCHAR(50),
+                last_payment_id INTEGER REFERENCES payments(payment_id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """,
+
+        "unique_subscriptions": """
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_active_user_subscription
+            ON user_subscriptions(user_id)
+            WHERE status = 'active';
+        """,
+
+        "update_users_v2": """
+               ALTER TABLE users
+                   ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
+                   ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
+                   ADD COLUMN IF NOT EXISTS specialty VARCHAR(100) -- اینجا کاما گذاشتیم
+               """,
+    }
+>>>>>>> subscription

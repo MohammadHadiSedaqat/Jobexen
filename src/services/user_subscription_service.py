@@ -36,3 +36,44 @@ class UserSubscriptionService:
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+<<<<<<< HEAD
+=======
+
+    def show_subscription_status(self, user_id: int) -> Dict:
+        try:
+            subscription_status = self.subuser_repo.subscription_status(user_id)
+            if not subscription_status:
+                raise HTTPException(status_code=404, detail="There is no subscription plan ")
+
+            return subscription_status
+        except HTTPException as e:
+            raise e
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    def show_payment_history(self, user_id: int) -> Dict:
+        try:
+            payment_history = self.subuser_repo.payment_history(user_id)
+            if not payment_history:
+                raise HTTPException(status_code=404, detail="There is no payment history ")
+            return payment_history
+
+        except HTTPException as e:
+            raise e
+
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+    def cancel_subscription_by_user(self, user_id: int) -> Dict:
+        try:
+            cancel_subscription = self.subuser_repo.cancel_subscription(user_id)
+            if not cancel_subscription:
+                raise HTTPException(status_code=404, detail="There is no subscription plan ")
+            return cancel_subscription
+
+        except HTTPException as e:
+            raise e
+
+        except Exception as e:
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+>>>>>>> subscription

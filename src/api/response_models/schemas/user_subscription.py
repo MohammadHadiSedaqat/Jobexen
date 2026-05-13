@@ -1,7 +1,14 @@
+<<<<<<< HEAD
 from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import date, datetime
+=======
+from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator, computed_field
+from typing import Optional, List, Dict, Any
+from decimal import Decimal
+from datetime import date, datetime, timedelta
+>>>>>>> subscription
 from enum import Enum
 
 
@@ -11,7 +18,10 @@ class BillingCycle(str, Enum):
     yearly = 'yearly'
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> subscription
 class UserSubscriptionResponse(BaseModel):
     name: str
     description: Optional[str] = None
@@ -23,7 +33,10 @@ class UserSubscriptionResponse(BaseModel):
         from_attributes = True
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> subscription
 class PaymentMethodEnum(str, Enum):
     online = "online"
     card_to_card = "card_to_card"
@@ -46,3 +59,40 @@ class UserSubscriptionPurchaseResponse(BaseModel):
 
     class Config:
         from_attributes = True
+<<<<<<< HEAD
+=======
+
+
+class UserSubscriptionSituation(BaseModel):
+    subscription_plan: str
+    plan_id: int
+    status: str
+    started_at: datetime
+    end_date: datetime
+
+    @computed_field
+    @property
+    def remaining_days(self) -> int:
+        now = datetime.now()
+        if now > self.end_date:
+            return 0
+        diff = self.end_date - now
+        return diff.days
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentHistory(BaseModel):
+    payment_id: int
+    amount: float
+    payment_status: str
+    transaction_id: str
+    paid_at: datetime
+
+    subscription_plan: str
+
+    class Config:
+        from_attributes = True
+
+>>>>>>> subscription
