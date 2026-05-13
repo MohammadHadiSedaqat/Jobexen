@@ -20,7 +20,7 @@ async def get_all_subscription_plans(
 ):
         return sub_service.show_all_subscription()
 
-@router.patch("/plans/{old_name}", response_model=SubscriptionPlanResponse, status_code=status.HTTP_200_OK)
+@router.patch("/plans/{plan_name}", response_model=SubscriptionPlanResponse, status_code=status.HTTP_200_OK)
 async def update_subscription_plan(
         old_name: str,
         sub_data: SubscriptionPlan,
@@ -29,13 +29,13 @@ async def update_subscription_plan(
         return sub_service.edit_subscription(old_name, sub_data)
 
 @router.delete("/plans", status_code=status.HTTP_200_OK)
-async def delete_all_plans(
+async def delete_all_subscription_plans(
         sub_service: SubscriptionService = Depends(SubscriptionService)
 ):
         return sub_service.delete_all_subscription()
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_200_OK)
-async def delete_plan(
+async def delete_subscription_plan(
     plan_id: int,
     sub_service: SubscriptionService = Depends(SubscriptionService)
 ):
