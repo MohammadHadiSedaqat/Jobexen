@@ -4,11 +4,6 @@ from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any, List
 import psycopg2.extras
 from enum import Enum, IntEnum
-from pydantic_core.core_schema import date_schema
-from src.connections.sync_postgres import get_db_connection
-from typing import Optional, Dict , Any, List
-import psycopg2.extras
-from enum import IntEnum
 from src.api.response_models.schemas.user_subscription import BillingCycle
 
 
@@ -119,7 +114,7 @@ class UserSubscriptionRepository:
             if conn:
                 conn.close()
                 cursor.close()
-                cursor.close()
+
 
     def subscription_status(self, user_id: int)-> Dict:
         conn = None
@@ -221,3 +216,37 @@ class UserSubscriptionRepository:
                 conn.close()
                 cursor.close()
 
+    def update_expired_subscriptions(self, user_id: int):
+        conn = None
+
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                UPDATE user_subscriptions 
+                SET status = 'expired' 
+                WHERE user_id = %s 
+                  AND status = 'active' 
+                  AND end_date < NOW();
+            """
+
+            cursor.execute(query, (user_id,))
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                print(f"Subscription for user {user_id} has been marked as expired.")
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"Error updating expired subscriptions: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
