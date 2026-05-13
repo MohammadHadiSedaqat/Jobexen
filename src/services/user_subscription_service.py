@@ -36,8 +36,7 @@ class UserSubscriptionService:
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
-<<<<<<< HEAD
-=======
+
 
     def show_subscription_status(self, user_id: int) -> Dict:
         try:
@@ -76,4 +75,3 @@ class UserSubscriptionService:
 
         except Exception as e:
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
->>>>>>> subscription

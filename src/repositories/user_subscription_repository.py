@@ -1,17 +1,14 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status
-<<<<<<< HEAD
 from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any, List
 import psycopg2.extras
 from enum import Enum, IntEnum
-=======
 from pydantic_core.core_schema import date_schema
 from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any, List
 import psycopg2.extras
 from enum import IntEnum
->>>>>>> subscription
 from src.api.response_models.schemas.user_subscription import BillingCycle
 
 
@@ -121,9 +118,7 @@ class UserSubscriptionRepository:
         finally:
             if conn:
                 conn.close()
-<<<<<<< HEAD
                 cursor.close()
-=======
                 cursor.close()
 
     def subscription_status(self, user_id: int)-> Dict:
@@ -226,4 +221,3 @@ class UserSubscriptionRepository:
                 conn.close()
                 cursor.close()
 
->>>>>>> subscription

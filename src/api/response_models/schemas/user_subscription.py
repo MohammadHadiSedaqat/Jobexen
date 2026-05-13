@@ -1,14 +1,11 @@
-<<<<<<< HEAD
 from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import date, datetime
-=======
 from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator, computed_field
 from typing import Optional, List, Dict, Any
 from decimal import Decimal
 from datetime import date, datetime, timedelta
->>>>>>> subscription
 from enum import Enum
 
 
@@ -18,10 +15,7 @@ class BillingCycle(str, Enum):
     yearly = 'yearly'
 
 
-<<<<<<< HEAD
 
-=======
->>>>>>> subscription
 class UserSubscriptionResponse(BaseModel):
     name: str
     description: Optional[str] = None
@@ -33,10 +27,7 @@ class UserSubscriptionResponse(BaseModel):
         from_attributes = True
 
 
-<<<<<<< HEAD
 
-=======
->>>>>>> subscription
 class PaymentMethodEnum(str, Enum):
     online = "online"
     card_to_card = "card_to_card"
@@ -59,8 +50,6 @@ class UserSubscriptionPurchaseResponse(BaseModel):
 
     class Config:
         from_attributes = True
-<<<<<<< HEAD
-=======
 
 
 class UserSubscriptionSituation(BaseModel):
@@ -94,5 +83,3 @@ class PaymentHistory(BaseModel):
 
     class Config:
         from_attributes = True
-
->>>>>>> subscription
