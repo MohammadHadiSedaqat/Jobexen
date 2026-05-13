@@ -1,5 +1,3 @@
-
-
 def get_schema_queries():
     return {
         "users": """
@@ -22,50 +20,99 @@ def get_schema_queries():
             );
         """,
 
-        "update_users_v2": """
-                   ALTER TABLE users
-                       ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
-                       ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
-                       ADD COLUMN IF NOT EXISTS specialty VARCHAR(100) 
-                   """,
+        "skills": """
+        CREATE TABLE IF NOT EXISTS skills (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(50) UNIQUE NOT NULL
+        );
+    """,
+
+        "tags": """
+        CREATE TABLE IF NOT EXISTS tags (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(50) UNIQUE NOT NULL
+        );
+    """,
+
+        "subscription_plans": """
+        CREATE TABLE IF NOT EXISTS subscription_plans (
+            plan_id SERIAL PRIMARY KEY,
+            name VARCHAR(100) NOT NULL UNIQUE,
+            description TEXT,
+            price NUMERIC (10,2) NOT NULL,
+            billing_cycle VARCHAR(20) CHECK (billing_cycle IN ('monthly','yearly','6_months')) NOT NULL,
+            features JSON,
+            status VARCHAR(50) DEFAULT 'active',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+
+        "payments": """
+        CREATE TABLE IF NOT EXISTS payments (
+            payment_id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            plan_id INTEGER REFERENCES subscription_plans(plan_id) ON DELETE CASCADE,
+            amount NUMERIC (10,2) NOT NULL,
+            transaction_id VARCHAR(100),
+            payment_status VARCHAR(20) CHECK (payment_status IN ('success','failed','pending')),
+            paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """,
 
         "user_experiences": """
-                            CREATE TABLE IF NOT EXISTS user_experiences
-                            ( id SERIAL PRIMARY KEY,
-                                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                                company_name VARCHAR(100),
-                                job_title VARCHAR(100) NOT NULL,
-                                employment_type VARCHAR(50) DEFAULT 'Full-time',
-                                start_date DATE,
-                                end_date DATE,
-                                description TEXT,
-                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                                );
-                            """,
+                        CREATE TABLE IF NOT EXISTS user_experiences
+                        ( id SERIAL PRIMARY KEY,
+                            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                            company_name VARCHAR(100),
+                            job_title VARCHAR(100) NOT NULL,
+                            employment_type VARCHAR(50) DEFAULT 'Full-time',
+                            start_date DATE,
+                            end_date DATE,
+                            description TEXT,
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            );
+                        """,
 
         "user_education": """
-                          CREATE TABLE IF NOT EXISTS user_education
-                          (
-                              id SERIAL PRIMARY KEY,
-                              user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                              institution VARCHAR(150) NOT NULL,
-                              degree VARCHAR(100),
-                              graduation_year INTEGER,
-                              created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
-                          """,
+                      CREATE TABLE IF NOT EXISTS user_education
+                      (
+                          id
+                          SERIAL
+                          PRIMARY
+                          KEY,
+                          user_id
+                          INTEGER
+                          REFERENCES
+                          users
+                      (
+                          id
+                      ) ON DELETE CASCADE,
+                          institution VARCHAR
+                      (
+                          150
+                      ) NOT NULL,
+                          degree VARCHAR
+                      (
+                          100
+                      ),
+                          graduation_year INTEGER,
+                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                          );
+                      """,
 
         "offerings": """
-            CREATE TABLE IF NOT EXISTS offerings (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                title VARCHAR(150) NOT NULL,
-                description TEXT,
-                price DECIMAL(12, 2) DEFAULT 0.00,
-                preview_image_url VARCHAR(255),
-                is_active BOOLEAN DEFAULT TRUE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """,
+        CREATE TABLE IF NOT EXISTS offerings (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            title VARCHAR(150) NOT NULL,
+            description TEXT,
+            price DECIMAL(12, 2) DEFAULT 0.00,
+            preview_image_url VARCHAR(255),
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """,
 
         "password_recovery": """
         CREATE TABLE IF NOT EXISTS password_recovery (
@@ -127,31 +174,12 @@ def get_schema_queries():
             );
         """,
 
-        "skills": """
-            CREATE TABLE IF NOT EXISTS skills (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(50) UNIQUE NOT NULL
-            );
-        """,
-
         "user_skills": """
             CREATE TABLE IF NOT EXISTS user_skills (
                 user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                 skill_id INTEGER REFERENCES skills(id) ON DELETE CASCADE,
                 level VARCHAR(20) DEFAULT 'Intermediate',
                 PRIMARY KEY (user_id, skill_id)
-            );
-        """,
-
-        "update_user_skills_v1": """
-            ALTER TABLE user_skills 
-            ADD COLUMN IF NOT EXISTS description TEXT
-""",
-
-        "tags": """
-            CREATE TABLE IF NOT EXISTS tags (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(50) UNIQUE NOT NULL
             );
         """,
 
@@ -173,6 +201,32 @@ def get_schema_queries():
                 required_skills TEXT[], 
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """
-    }
+        """,
 
+        "user_subscriptions": """
+            CREATE TABLE IF NOT EXISTS user_subscriptions (
+                user_subscription_id SERIAL PRIMARY KEY,
+                plan_id INTEGER REFERENCES subscription_plans(plan_id) ON DELETE CASCADE,
+                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                status VARCHAR(20) CHECK (status IN ('active','cancelled','expired')) DEFAULT 'active',
+                started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                end_date TIMESTAMP,
+                payment_method VARCHAR(50),
+                last_payment_id INTEGER REFERENCES payments(payment_id),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """,
+
+        "unique_subscriptions": """
+            CREATE UNIQUE INDEX IF NOT EXISTS unique_active_user_subscription
+            ON user_subscriptions(user_id)
+            WHERE status = 'active';
+        """,
+
+        "update_users_v2": """
+               ALTER TABLE users
+                   ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
+                   ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
+                   ADD COLUMN IF NOT EXISTS specialty VARCHAR(100) 
+               """,
+    }

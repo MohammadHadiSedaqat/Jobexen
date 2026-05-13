@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from src.config import settings
 from src.repositories.user_repository import UserRepository
+from src.repositories.user_subscription_repository import UserSubscriptionRepository
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -34,7 +35,7 @@ class AuthService:
         return encoded_jwt
 
     @staticmethod
-    async def get_current_user(token: str = Depends(oauth2_scheme), user_repo: UserRepository = Depends()):
+    async def get_current_user(token: str = Depends(oauth2_scheme), user_repo: UserRepository = Depends(), sub_repo: UserSubscriptionRepository = Depends()):
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="توکن نامعتبر است یا منقضی شده است",
@@ -53,6 +54,9 @@ class AuthService:
 
         if user is None:
             raise credentials_exception
+
+        sub_repo.update_expired_subscriptions(user.id)
+
         return user
 
     @staticmethod

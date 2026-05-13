@@ -57,6 +57,8 @@ async def create_tables():
             cursor.close()
             conn.close()
 
+
+
 @app.get("/")
 def read_root():
     return {"message": "Welcome to Jobexen API - Version 1.0.0"}

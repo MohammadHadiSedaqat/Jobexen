@@ -114,3 +114,139 @@ class UserSubscriptionRepository:
             if conn:
                 conn.close()
                 cursor.close()
+
+
+    def subscription_status(self, user_id: int)-> Dict:
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+
+            query = """
+                    SELECT subscription_plan, plan_id, status, started_at, end_date 
+                    FROM user_subscriptions 
+                    WHERE user_id = %s AND status = 'active'
+                    ORDER BY started_at DESC LIMIT 1
+                    """
+            cursor.execute(query, (user_id,))
+            item = cursor.fetchone()
+
+            if item is None:
+                raise HTTPException(status_code=404, detail="There is no plan")
+
+            result = dict(item)
+
+            return result
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()
+
+    def payment_history(self, user_id: int) -> Dict:
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            query = """
+                        SELECT 
+                            p.payment_id, 
+                            p.amount, 
+                            p.payment_status, 
+                            p.transaction_id, 
+                            p.paid_at,
+                            sp.subscription_plan 
+                        FROM payments p
+                        JOIN user_subscriptions sp ON p.payment_id = sp.last_payment_id                        WHERE p.user_id = %s
+                        ORDER BY p.paid_at DESC
+                    """
+
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+
+            return [dict(row) for row in rows]
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()
+
+    def cancel_subscription(self, user_id: int):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.DictCursor)
+            query = """
+                UPDATE user_subscriptions 
+                SET status = 'cancelled'
+                WHERE user_id = %s AND status = 'active'
+            """
+
+            cursor.execute(query, (user_id,))
+            conn.commit()
+
+            return cursor.rowcount > 0
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()
+
+    def update_expired_subscriptions(self, user_id: int):
+        conn = None
+
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                UPDATE user_subscriptions 
+                SET status = 'expired' 
+                WHERE user_id = %s 
+                  AND status = 'active' 
+                  AND end_date < NOW();
+            """
+
+            cursor.execute(query, (user_id,))
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                print(f"Subscription for user {user_id} has been marked as expired.")
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"Error updating expired subscriptions: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
