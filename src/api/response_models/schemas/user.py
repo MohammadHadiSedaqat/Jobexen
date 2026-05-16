@@ -1,11 +1,11 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator , model_validator
 from typing import Optional, List
 import re
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 
 class UserBase(BaseModel):
-    username: str
+    username: str = Field(None, min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$", examples=["alphanumeric username"])
     email: EmailStr
     full_name: Optional[str] = None
     city: Optional[str] = None
@@ -132,7 +132,18 @@ class UserSkillCreate(BaseModel):
     level: SkillLevel = SkillLevel.beginner
     description: Optional[str] = None
 
+
 class UserSkillUpdate(BaseModel):
+    # skill_id:int
+    skill_name: Optional[str] = Field(None, min_length=3, max_length=100)
+    level: Optional[SkillLevel] = None
+    description: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class UserSkillShow(BaseModel):
     skill_id:int
     skill_name: Optional[str] = Field(None, min_length=3, max_length=100)
     level: Optional[SkillLevel] = None
@@ -146,20 +157,81 @@ class UserProfileResponse(UserResponse):
     specialty: Optional[str] = None
     resume_file_url: Optional[str] = None
     social_links: dict = {}
-    experiences: List[ExperienceCreate] = []
-    skills: List[UserSkillCreate] = []
+    experiences: List[ExperienceResponse] = []
+    skills: List[UserSkillShow] = []
+
+
+class UserMinInfo(BaseModel):
+    full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
+    specialty: Optional[str] = None
+    reputation_score: int = 0
+    specialty_score: int = 0
+    is_verified: bool = False
+
+    class Config:
+        from_attributes = True
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
+    username: Optional[str]= Field(None,min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$", description="alphanumeric username")
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     city: Optional[str] = None
     bio: Optional[str] = Field(None, max_length=250)
     phone_number: Optional[str] = None
+    social_links: dict = {}
     avatar_url: Optional[str] = None
+    specialty: Optional[str] = None
 
 
+class UserEducationCreate(BaseModel):
+    institution: Optional[str] = Field(None, max_length=100)
+    degree: Optional[str] = Field(None, max_length=100)
+    education_level : Optional[str] = Field(None, max_length=100)
+    field_of_study : Optional[str] = Field(None, max_length=100)
+    start_year : Optional[int] = None
+    graduation_year: Optional[int] = None
+    grade: Optional[str] = None
+    is_current: Optional[bool] = None
+    description: Optional[str] = Field(None, max_length=250)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
 
 
+class UserEducationResponse(BaseModel):
+    id: int
+    user_id: int
+    institution: Optional[str] = Field(None, max_length=100)
+    degree: Optional[str] = Field(None, max_length=100)
+    education_level : Optional[str] = Field(None, max_length=100)
+    field_of_study : Optional[str] = Field(None, max_length=100)
+    start_year : Optional[int] = None
+    graduation_year: Optional[int] = None
+    grade: Optional[str] = None
+    is_current: Optional[bool] = None
+    description: Optional[str] = Field(None, max_length=250)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
+    created_at: datetime
+    updated_at: datetime
 
+    class Config:
+        from_attributes = True
+
+
+class UserEducationUpdate(BaseModel):
+    institution: Optional[str] = Field(None, max_length=100)
+    degree: Optional[str] = Field(None, max_length=100)
+    education_level : Optional[str] = Field(None, max_length=100)
+    field_of_study : Optional[str] = Field(None, max_length=100)
+    start_year : Optional[int] = None
+    graduation_year: Optional[int] = None
+    grade: Optional[str] = None
+    is_current: Optional[bool] = None
+    description: Optional[str] = Field(None, max_length=250)
+    city: Optional[str] = Field(None, max_length=100)
+    country: Optional[str] = Field(None, max_length=100)
+
+    class Config:
+        from_attributes = True

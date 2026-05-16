@@ -1,5 +1,7 @@
 from http.client import HTTPException
-from sqlalchemy.dialects.mysql import insert
+
+from markdown.inlinepatterns import HtmlInlineProcessor
+
 from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any
 import psycopg2.extras
@@ -83,6 +85,43 @@ class UserRepository:
         try:
             cursor.execute(query, (user_id,))
             return cursor.fetchone()
+        finally:
+            cursor.close()
+            conn.close()
+
+    def increase_reputation(self, user_id, reward_score):
+        query = "UPDATE users SET reputation_score = reputation_score +%s WHERE id = %s"
+
+        conn = self.get_connection()
+        if conn is None:
+            raise ConnectionError
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, (reward_score,user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating user reputation: {e}")
+            conn.rollback()
+            return False
+        finally:
+            cursor.close()
+            conn.close()
+
+    def increase_specialty_score(self, user_id, specialty_score):
+        query = "UPDATE users SET specialty_score = specialty_score +%s WHERE id = %s"
+        conn = self.get_connection()
+        if conn is None:
+            raise ConnectionError
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, (specialty_score,user_id))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error updating user specialty: {e}")
+            conn.rollback()
+            return False
         finally:
             cursor.close()
             conn.close()
@@ -173,9 +212,9 @@ class UserRepository:
 
     async def add_experience(self, user_id: int  , exp_data: dict):
         query = """
-                INSERT INTO user_experiences (user_id, company_name, job_title, employment_type, start_date, end_date, \
+                INSERT INTO user_experiences (user_id, company_name, job_title, employment_type, start_date, end_date, 
                                               description)
-                VALUES (%(user_id)s, %(company_name)s, %(job_title)s, %(employment_type)s, %(start_date)s, %(end_date)s, \
+                VALUES (%(user_id)s, %(company_name)s, %(job_title)s, %(employment_type)s, %(start_date)s, %(end_date)s, 
                         %(description)s)
                 """
         params = {**exp_data, "user_id": user_id}
@@ -192,15 +231,19 @@ class UserRepository:
         skill_id = skill_result['id']
 
         query_link = """
-                     INSERT INTO user_skills (user_id, skill_id, level)
-                     VALUES (%(user_id)s, %(skill_id)s, %(level)s) ON CONFLICT (user_id, skill_id) DO 
-                     UPDATE SET level = EXCLUDED.level;
+                     INSERT INTO user_skills (user_id, skill_id, level, description)
+                     VALUES (%(user_id)s, %(skill_id)s, %(level)s, %(description)s) ON CONFLICT (user_id, skill_id) 
+            DO 
+                     UPDATE SET
+                         level = EXCLUDED.level, 
+                         description = EXCLUDED.description; 
                      """
 
         params_link = {
             "user_id": user_id,
             "skill_id": skill_id,
-            "level": skill_data.get('level' , 'Intermediate')
+            "level": skill_data.get('level' , 'Intermediate'),
+            "description": skill_data.get('description')
         }
 
         await self.execute_query(query_link, params_link)
@@ -293,7 +336,7 @@ class UserRepository:
         updated_user_skills = await self.execute_query_fetchone(query, params)
         return updated_user_skills
 
-    async def  get_or_create_skill_by_name(self, skill_name:str)->int:
+    async def get_or_create_skill_by_name(self, skill_name:str)->int:
         query = """
                 INSERT INTO skills (name)
                 VALUES (%s) ON CONFLICT (name) DO 
@@ -317,35 +360,191 @@ class UserRepository:
         return await self.execute_query_fetchone(query, (user_id,))
 
     async def delete_experience(self, user_id: int, experience_id:int):
-        query = "DELETE FROM experiences WHERE id = %s AND user_id = %s RETURNING id"
+        query = "DELETE FROM user_experiences WHERE id = %s AND user_id = %s RETURNING id"
         return await self.execute_query_fetchone(query, (experience_id, user_id))
 
     async def delete_user_skills(self, user_id: int, skill_id:int):
         query = "delete from user_skills where user_id = %s AND skill_id = %s returning skill_id"
         return await self.execute_query_fetchone(query, (skill_id, user_id))
 
+    async def add_user_education(self, user_id: int, user_data: dict):
+        conn = None
 
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
 
+            query = """
+                INSERT INTO user_education (
+                    user_id,
+                    institution,
+                    education_level,
+                    field_of_study,
+                    degree,
+                    start_year,
+                    graduation_year,
+                    grade,
+                    is_current,
+                    description,
+                    city,
+                    country
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s,
+                    %s, %s
+                )
+                RETURNING *;
+            """
 
+            params = (
+                user_id,
+                user_data["institution"],
+                user_data.get("education_level"),
+                user_data.get("field_of_study"),
+                user_data.get("degree"),
+                user_data.get("start_year"),
+                user_data.get("graduation_year"),
+                user_data.get("grade"),
+                user_data.get("is_current", False),
+                user_data.get("description"),
+                user_data.get("city"),
+                user_data.get("country"),
+            )
 
+            cursor.execute(query, params)
+            row = cursor.fetchone()
+            conn.commit()
 
+            if row:
+                return {
+                    "id": row["id"],
+                    "user_id": row["user_id"],
+                    "institution": row["institution"],
+                    "education_level": row["education_level"],
+                    "field_of_study": row["field_of_study"],
+                    "degree": row["degree"],
+                    "start_year": row["start_year"],
+                    "graduation_year": row["graduation_year"],
+                    "grade": row["grade"],
+                    "is_current": row["is_current"],
+                    "description": row["description"],
+                    "city": row["city"],
+                    "country": row["country"],
+                    "created_at": row["created_at"],
+                    "updated_at": row["updated_at"]
+                }
 
+        except HTTPException as e:
+            if conn:
+                conn.rollback()
+            raise e
 
+        except Exception as e:
+            if conn:
+                conn.rollback()
 
+            print(f"Error adding education: {e}")
 
+            raise HTTPException(
+                status_code=500,
+                detail=str(e)
+            )
 
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
 
+    async def edit_user_education(self, user_id: int, education_id: int, user_data: dict):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
 
+            query = """
+                UPDATE user_education 
+                SET institution = %s, 
+                    education_level = %s, 
+                    field_of_study = %s, 
+                    degree = %s, 
+                    start_year = %s, 
+                    graduation_year = %s, 
+                    grade = %s, 
+                    is_current = %s, 
+                    description = %s, 
+                    city = %s, 
+                    country = %s,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s AND user_id = %s
+                RETURNING *;
+            """
 
+            params = (
+                user_data["institution"],
+                user_data.get("education_level"),
+                user_data.get("field_of_study"),
+                user_data.get("degree"),
+                user_data.get("start_year"),
+                user_data.get("graduation_year"),
+                user_data.get("grade"),
+                user_data.get("is_current", False),
+                user_data.get("description"),
+                user_data.get("city"),
+                user_data.get("country"),
+                education_id,
+                user_id
+            )
 
+            cursor.execute(query, params)
+            result = cursor.fetchone()
 
+            if not result:
+                raise HTTPException(status_code=404, detail=f"Education record with ID {user_data['id']} not found.")
 
+            conn.commit()
+            return result
 
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
 
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ Error in SubRepository.: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
 
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
 
+    async def get_user_education(self, user_id: int):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
 
+            query = """
+                        SELECT * FROM user_education 
+                        WHERE user_id = %s 
+                        ORDER BY start_year DESC, graduation_year DESC;
+                    """
+            cursor.execute(query, (user_id,))
+            records = cursor.fetchall()
 
+            return records
 
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
 
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ Error in SubRepository.: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
 
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()

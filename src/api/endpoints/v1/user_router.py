@@ -1,7 +1,11 @@
-from typing import List, Any
+from csv import DictWriter
+from typing import List, Any, Dict
 from fastapi import APIRouter, Depends, status, HTTPException
+from sqlalchemy.util import await_only
+
 from src.api.response_models.schemas.user import UserCreate, UserResponse, UserLogin, ResetPassword, ExperienceCreate, \
-    UserSkillCreate, UserProfileResponse, UserUpdate, ExperienceUpdate, ExperienceResponse, UserSkillUpdate
+    UserSkillCreate, UserProfileResponse, UserUpdate, ExperienceUpdate, ExperienceResponse, UserSkillUpdate, \
+    UserEducationResponse, UserEducationCreate, UserEducationUpdate
 from src.services import user_service
 from src.services.auth import AuthService
 from src.services.user_service import UserService
@@ -52,6 +56,12 @@ async def reset_password_confirm(
     )
 
 
+@profile_router.get("/me/profile", response_model=UserProfileResponse, status_code=status.HTTP_200_OK)
+async def get_user_profile(
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends(UserService)
+):
+    return await service.get_user_profile(current_user['id'])
 
 
 @profile_router.post("/experiences", status_code=status.HTTP_201_CREATED)
@@ -60,8 +70,8 @@ async def add_user_experiences(
     current_user: Any = Depends(AuthService.get_current_user),
     service: UserService = Depends()
 ):
-
     return await service.add_experience(current_user['id'], experiences)
+
 
 @profile_router.post("/skills",status_code=status.HTTP_201_CREATED)
 async def add_user_skills(
@@ -72,28 +82,6 @@ async def add_user_skills(
 
     return await service.add_skill(current_user['id'], skills)
 
-
-@profile_router.get("/me/profile", response_model=UserProfileResponse, status_code=status.HTTP_200_OK)
-async def get_user_profile(
-        current_user: Any = Depends(AuthService.get_current_user),
-        service: UserService = Depends(UserService)
-):
-    return await service.get_user_profile(current_user['id'])
-
-
-
-
-
-
-@profile_router.patch("/me/profile", response_model=UserProfileResponse ,status_code=status.HTTP_200_OK)
-async def update_profile(
-        user_data:UserUpdate,
-        current_user: Any = Depends(AuthService.get_current_user),
-        service: UserService = Depends()
-):
-    user_id = current_user['id']
-    result = await service.update_user_profile(user_id, user_data)
-    return result
 
 @profile_router.patch("/me/experiences/{experience_id}", response_model=ExperienceResponse,status_code=status.HTTP_200_OK)
 async def update_experience(
@@ -110,6 +98,7 @@ async def update_experience(
     )
     return update_exp
 
+
 @profile_router.patch("/me/skills/{skill_id}" , status_code=status.HTTP_200_OK)
 async def update_user_skills(
     skill_id: int,
@@ -125,6 +114,17 @@ async def update_user_skills(
     return update_exp
 
 
+@profile_router.patch("/me/profile", response_model=UserProfileResponse ,status_code=status.HTTP_200_OK)
+async def update_profile(
+        user_data:UserUpdate,
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    user_id = current_user['id']
+    result = await service.update_user_profile(user_id, user_data)
+    return result
+
+
 @profile_router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_profile(
         current_user: Any = Depends(AuthService.get_current_user),
@@ -132,7 +132,6 @@ async def delete_user_profile(
 ):
     await service.user_repo.delete_user_profile(user_id=current_user['id'])
     return None
-
 
 
 @profile_router.delete("/me/experiences/{exp_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -143,6 +142,7 @@ async def delete_user_experience(
 ):
     return await service.delete_experience(current_user['id'], exp_id)
 
+
 @profile_router.delete("/me/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_skill(
         skill_id: int,
@@ -152,3 +152,27 @@ async def delete_user_skill(
     return await service.delete_skill(current_user['id'], skill_id)
 
 
+@profile_router.get("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
+async def get_user_education(
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    return await service.get_education(current_user['id'])
+
+@profile_router.post("/education", response_model=List[UserEducationResponse], status_code=status.HTTP_201_CREATED)
+async def create_user_education(
+        education_data: List[UserEducationCreate],
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    return await service.add_education(current_user['id'], education_data)
+
+
+@profile_router.patch("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
+async def update_user_education(
+        education_data: List[UserEducationUpdate],
+        education_id: int,
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    return await service.edit_education(current_user['id'], education_id, education_data)
