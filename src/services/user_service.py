@@ -4,9 +4,6 @@ import jwt
 from fastapi import HTTPException, status
 import traceback
 import random
-
-from sympy.physics.units.definitions.dimension_definitions import information
-
 from src.repositories.user_repository import UserRepository
 from src.api.response_models.schemas.user import UserCreate, ExperienceCreate, UserSkillCreate, UserUpdate, \
     ExperienceUpdate, UserSkillUpdate, UserEducationCreate, UserEducationUpdate
@@ -270,7 +267,21 @@ class UserService:
         try:
             edu_info = await self.user_repo.get_user_education(user_id)
             if not edu_info:
-                raise HTTPException(status_code=404, detail="User not found")
+                raise HTTPException(status_code=404, detail="Education not found")
+
+            return edu_info
+
+        except HTTPException as e:
+            raise e
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    async def delete_user_education(self, user_id: int ,education_id: int):
+        try:
+            edu_info = await self.user_repo.delete_education(user_id ,education_id)
+            if not edu_info:
+                raise HTTPException(status_code=404, detail="Education not found")
 
             return edu_info
 

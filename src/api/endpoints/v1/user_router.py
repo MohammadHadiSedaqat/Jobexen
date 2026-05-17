@@ -159,7 +159,7 @@ async def get_user_education(
 ):
     return await service.get_education(current_user['id'])
 
-@profile_router.post("/education", response_model=List[UserEducationResponse], status_code=status.HTTP_201_CREATED)
+@profile_router.post("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_201_CREATED)
 async def create_user_education(
         education_data: List[UserEducationCreate],
         current_user: Any = Depends(AuthService.get_current_user),
@@ -168,7 +168,7 @@ async def create_user_education(
     return await service.add_education(current_user['id'], education_data)
 
 
-@profile_router.patch("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
+@profile_router.patch("/me/education/{education_id}", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
 async def update_user_education(
         education_data: List[UserEducationUpdate],
         education_id: int,
@@ -176,3 +176,11 @@ async def update_user_education(
         service: UserService = Depends()
 ):
     return await service.edit_education(current_user['id'], education_id, education_data)
+
+@profile_router.delete("/me/education/{education_id}", status_code=status.HTTP_200_OK)
+async def delete_user_education(
+        education_id: int,
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    return await service.delete_user_education(current_user['id'], education_id)

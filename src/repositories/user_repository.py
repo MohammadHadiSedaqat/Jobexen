@@ -548,3 +548,35 @@ class UserRepository:
             if conn:
                 cursor.close()
                 conn.close()
+
+    async def delete_education(self, user_id , education_id: int):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            query = """
+                    DELETE FROM user_education WHERE id = %s AND user_id = %s RETURNING *;
+                """
+
+            cursor.execute(query, (education_id, user_id))
+            delete_education = cursor.fetchone()
+            conn.commit()
+
+            if not delete_education:
+                return None
+
+            return {"message": "user education deleted"}
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
+

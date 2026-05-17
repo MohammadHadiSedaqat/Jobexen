@@ -21,18 +21,18 @@ def get_schema_queries():
         """,
 
         "skills": """
-        CREATE TABLE IF NOT EXISTS skills (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(50) UNIQUE NOT NULL
-        );
-    """,
+            CREATE TABLE IF NOT EXISTS skills (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50) UNIQUE NOT NULL
+            );
+        """,
 
         "tags": """
-        CREATE TABLE IF NOT EXISTS tags (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(50) UNIQUE NOT NULL
-        );
-    """,
+            CREATE TABLE IF NOT EXISTS tags (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(50) UNIQUE NOT NULL
+            );
+        """,
 
         "subscription_plans": """
         CREATE TABLE IF NOT EXISTS subscription_plans (
@@ -61,58 +61,52 @@ def get_schema_queries():
     """,
 
         "user_experiences": """
-                        CREATE TABLE IF NOT EXISTS user_experiences
-                        ( id SERIAL PRIMARY KEY,
-                            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                            company_name VARCHAR(100),
-                            job_title VARCHAR(100) NOT NULL,
-                            employment_type VARCHAR(50) DEFAULT 'Full-time',
-                            start_date DATE,
-                            end_date DATE,
-                            description TEXT,
-                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                            );
-                        """,
+                            CREATE TABLE IF NOT EXISTS user_experiences
+                            ( id SERIAL PRIMARY KEY,
+                                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                                company_name VARCHAR(100),
+                                job_title VARCHAR(100) NOT NULL,
+                                employment_type VARCHAR(50) DEFAULT 'Full-time',
+                                start_date DATE,
+                                end_date DATE,
+                                description TEXT,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                                );
+                            """,
 
         "user_education": """
-                      CREATE TABLE IF NOT EXISTS user_education
-                      (
-                          id
-                          SERIAL
-                          PRIMARY
-                          KEY,
-                          user_id
-                          INTEGER
-                          REFERENCES
-                          users
-                      (
-                          id
-                      ) ON DELETE CASCADE,
-                          institution VARCHAR
-                      (
-                          150
-                      ) NOT NULL,
-                          degree VARCHAR
-                      (
-                          100
-                      ),
-                          graduation_year INTEGER,
-                          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                          );
-                      """,
+            CREATE TABLE IF NOT EXISTS user_education
+            (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                institution VARCHAR(150) NOT NULL,
+                education_level VARCHAR(50),
+                field_of_study VARCHAR(100),
+                degree VARCHAR(100),
+                start_year INTEGER,
+                graduation_year INTEGER,
+                grade VARCHAR(20),
+                is_current BOOLEAN DEFAULT FALSE,
+                description TEXT,
+                city VARCHAR(100),
+                country VARCHAR(100),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+            """,
 
         "offerings": """
-        CREATE TABLE IF NOT EXISTS offerings (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            title VARCHAR(150) NOT NULL,
-            description TEXT,
-            price DECIMAL(12, 2) DEFAULT 0.00,
-            preview_image_url VARCHAR(255),
-            is_active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """,
+                    CREATE TABLE IF NOT EXISTS offerings (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                        title VARCHAR(150) NOT NULL,
+                        description TEXT,
+                        price DECIMAL(12, 2) DEFAULT 0.00,
+                        preview_image_url VARCHAR(255),
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    );
+                """,#this
 
         "password_recovery": """
         CREATE TABLE IF NOT EXISTS password_recovery (
@@ -152,7 +146,7 @@ def get_schema_queries():
                 content TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """,
+        """,#this
 
         "likes": """
             CREATE TABLE IF NOT EXISTS likes (
@@ -162,7 +156,7 @@ def get_schema_queries():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, post_id)
             );
-        """,
+        """,#this
 
         "connections": """
             CREATE TABLE IF NOT EXISTS user_connections (
@@ -172,7 +166,7 @@ def get_schema_queries():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(follower_id, following_id)
             );
-        """,
+        """,#this
 
         "user_skills": """
             CREATE TABLE IF NOT EXISTS user_skills (
@@ -191,18 +185,6 @@ def get_schema_queries():
             );
         """,
 
-        "jobs": """
-            CREATE TABLE IF NOT EXISTS jobs (
-                id SERIAL PRIMARY KEY,
-                company_name VARCHAR(100),
-                title VARCHAR(100),
-                description TEXT,
-                city VARCHAR(50),
-                required_skills TEXT[], 
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """,
-
         "user_subscriptions": """
             CREATE TABLE IF NOT EXISTS user_subscriptions (
                 user_subscription_id SERIAL PRIMARY KEY,
@@ -217,6 +199,10 @@ def get_schema_queries():
             );
         """,
 
+        "posts_indexes": """CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+                CREATE INDEX IF NOT EXISTS idx_posts_type ON posts(post_type);
+                CREATE INDEX IF NOT EXISTS idx_posts_create_at ON posts(created_at DESC);""",
+
         "unique_subscriptions": """
             CREATE UNIQUE INDEX IF NOT EXISTS unique_active_user_subscription
             ON user_subscriptions(user_id)
@@ -224,9 +210,26 @@ def get_schema_queries():
         """,
 
         "update_users_v2": """
-               ALTER TABLE users
-                   ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
-                   ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
-                   ADD COLUMN IF NOT EXISTS specialty VARCHAR(100) 
-               """,
+                   ALTER TABLE users
+                       ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
+                       ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
+                       ADD COLUMN IF NOT EXISTS specialty VARCHAR(100); 
+        """,
+
+        "update_posts_v1": """ALTER TABLE posts
+                            ADD COLUMN IF NOT EXISTS extra_data JSONB DEFAULT '{}',
+                            ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE,  --اینجا اسم و عنوان پست باید به فرمت مناسب داشته باشه یعنی مثلا فاصله نداشته باشه و...
+                            ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE,
+                            ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0;""",
+
+        "update_posts_v2":"""DELETE FROM posts
+            WHERE user_id NOT IN (SELECT ID FROM users);
+            ALTER TABLE posts DROP CONSTRAINT IF EXISTS fk_posts_user;
+            ALTER TABLE posts
+            ADD CONSTRAINT fk_posts_user
+            FOREIGN KEY(user_id) REFERENCES users(id)
+            ON DELETE CASCADE;""",
+
+        "update_user_skills_v1": """ALTER TABLE user_skills 
+                ADD COLUMN IF NOT EXISTS description TEXT""",
     }

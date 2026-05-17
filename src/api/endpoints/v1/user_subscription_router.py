@@ -8,6 +8,7 @@ from src.services.auth import AuthService
 
 router = APIRouter(prefix="/user-subscriptions", tags=["User Subscription"])
 
+
 @router.get("/plans", response_model=List[UserSubscriptionResponse], status_code=status.HTTP_200_OK)
 def get_available_plans(
         user_sub_service: UserSubscriptionService = Depends(UserSubscriptionService),
@@ -15,7 +16,7 @@ def get_available_plans(
 ):
     return user_sub_service.get_subscription_plan()
 
-@router.post("subscribe", response_model=UserSubscriptionPurchaseResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/subscribe", response_model=UserSubscriptionPurchaseResponse, status_code=status.HTTP_201_CREATED)
 def subscribe_to_plan(
         user_sub_service: UserSubscriptionService = Depends(UserSubscriptionService),
         current_user: Any = Depends(AuthService.get_current_user),

@@ -55,7 +55,7 @@ class AuthService:
         if user is None:
             raise credentials_exception
 
-        sub_repo.update_expired_subscriptions(user.id)
+        sub_repo.update_expired_subscriptions(int(user_id))
 
         return user
 
