@@ -277,6 +277,20 @@ class UserService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+    async def search_education(self, user_id: int, search_query: str):
+        try:
+            edu_info = await self.user_repo.search_user_education(user_id, search_query)
+            if not edu_info:
+                raise HTTPException(status_code=404, detail="Education not found")
+
+            return edu_info
+
+        except HTTPException as e:
+            raise e
+
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
     async def delete_user_education(self, user_id: int ,education_id: int):
         try:
             edu_info = await self.user_repo.delete_education(user_id ,education_id)

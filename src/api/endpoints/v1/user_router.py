@@ -1,8 +1,5 @@
-from csv import DictWriter
-from typing import List, Any, Dict
+from typing import List, Any, Dict, Optional
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy.util import await_only
-
 from src.api.response_models.schemas.user import UserCreate, UserResponse, UserLogin, ResetPassword, ExperienceCreate, \
     UserSkillCreate, UserProfileResponse, UserUpdate, ExperienceUpdate, ExperienceResponse, UserSkillUpdate, \
     UserEducationResponse, UserEducationCreate, UserEducationUpdate
@@ -152,12 +149,12 @@ async def delete_user_skill(
     return await service.delete_skill(current_user['id'], skill_id)
 
 
-@profile_router.get("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
-async def get_user_education(
-        current_user: Any = Depends(AuthService.get_current_user),
-        service: UserService = Depends()
-):
-    return await service.get_education(current_user['id'])
+# @profile_router.get("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
+# async def get_user_education(
+#         current_user: Any = Depends(AuthService.get_current_user),
+#         service: UserService = Depends()
+# ):
+#     return await service.get_education(current_user['id'])
 
 @profile_router.post("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_201_CREATED)
 async def create_user_education(
@@ -184,3 +181,15 @@ async def delete_user_education(
         service: UserService = Depends()
 ):
     return await service.delete_user_education(current_user['id'], education_id)
+
+
+@profile_router.get("/me/education", response_model=List[UserEducationResponse], status_code=status.HTTP_200_OK)
+async def get_or_search_user_education(
+        search_query: Optional[str] = None,
+        current_user: Any = Depends(AuthService.get_current_user),
+        service: UserService = Depends()
+):
+    if search_query:
+        return await service.search_education(current_user['id'], search_query)
+
+    return await service.get_education(current_user['id'])

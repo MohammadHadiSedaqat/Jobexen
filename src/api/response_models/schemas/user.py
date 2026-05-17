@@ -153,14 +153,6 @@ class UserSkillShow(BaseModel):
         from_attributes = True
 
 
-class UserProfileResponse(UserResponse):
-    specialty: Optional[str] = None
-    resume_file_url: Optional[str] = None
-    social_links: dict = {}
-    experiences: List[ExperienceResponse] = []
-    skills: List[UserSkillShow] = []
-
-
 class UserMinInfo(BaseModel):
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
@@ -235,3 +227,12 @@ class UserEducationUpdate(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserProfileResponse(UserResponse):
+    specialty: Optional[str] = None
+    resume_file_url: Optional[str] = None
+    social_links: dict = {}
+    experiences: List[ExperienceResponse] = []
+    skills: List[UserSkillShow] = []
+    education: List[UserEducationResponse] = []

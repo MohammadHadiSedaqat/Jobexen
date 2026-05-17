@@ -1,7 +1,4 @@
 from http.client import HTTPException
-
-from markdown.inlinepatterns import HtmlInlineProcessor
-
 from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any
 import psycopg2.extras
@@ -281,6 +278,13 @@ class UserRepository:
                       """
         user_dict['skills'] = await self.execute_query_all(skill_query, (user_id,))
 
+        edu_query = """
+                    SELECT * FROM user_education 
+                    WHERE user_id = %s 
+                    ORDER BY start_year DESC, graduation_year DESC
+                    """
+        user_dict['education'] = await self.execute_query_all(edu_query, (user_id,))
+
         return user_dict
 
     async def update_user(self, user_id: int, user_data: dict):
@@ -549,6 +553,42 @@ class UserRepository:
                 cursor.close()
                 conn.close()
 
+    async def search_user_education(self, user_id: int, search_query: str):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                    SELECT * FROM user_education 
+                    WHERE user_id = %s AND (
+                        institution ILIKE %s OR 
+                        field_of_study ILIKE %s OR 
+                        degree ILIKE %s
+                    )
+                    ORDER BY start_year DESC, graduation_year DESC;
+                """
+
+            search_param = f"%{search_query}%"
+            params = (user_id, search_param, search_param, search_param)
+
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            return records
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()
+
     async def delete_education(self, user_id , education_id: int):
         conn = None
         try:
@@ -579,4 +619,3 @@ class UserRepository:
             if conn:
                 cursor.close()
                 conn.close()
-
