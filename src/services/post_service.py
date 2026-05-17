@@ -157,8 +157,34 @@ class PostService:
 
         return self.post_repository.update(post_id, cleaned_data)
 
-    async def delete_post(self, post_id:int , user_id:int):
-        success = self.post_repository.delete(post_id=post_id, user_id=user_id)
-        if success:
-            print("دیلیت پست با موفقیت انجام شد")
-        return success
+    async def delete_post(self, post_id:int , user_id:int) ->bool:
+        current_post=self.post_repository.get_post_by_id_and_user(post_id=post_id, user_id=user_id)
+        if current_post is None:
+            return False
+
+        success=self.post_repository.delete(post_id=post_id, user_id=user_id)
+
+        if success and current_post.get("is_published") is True:
+            reputation_scores = {
+                PostType.THOUGHT: 2,
+                PostType.MEDIA: 3
+            }
+
+            specialty_scores = {
+                PostType.PORTFOLIO: 2,
+                PostType.ARTICLE: 5
+            }
+
+            current_post_type = current_post.get('post_type') or current_post.get('post_type')
+            if current_post_type in reputation_scores:
+                penalty = reputation_scores[current_post_type]
+                self.user_repository.decrease_reputation(user_id, penalty)
+                print(f"📉 {penalty} امتیاز اعتبار عمومی از کاربر {user_id} به دلیل حذف پست کم شد.")
+
+            elif current_post_type in specialty_scores:
+                penalty = specialty_scores[current_post_type]
+                self.user_repository.decrease_specialty_score(user_id, penalty)
+                print(f"📉 {penalty} امتیاز تخصص از کاربر {user_id} به دلیل حذف پست کم شد.")
+
+            return success
+
