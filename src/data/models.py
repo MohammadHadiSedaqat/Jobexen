@@ -124,19 +124,19 @@ def get_schema_queries():
     """,
 
         "posts": """
-            CREATE TABLE IF NOT EXISTS posts (
-                id SERIAL PRIMARY KEY,
-                user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                title VARCHAR(120),
-                content TEXT NOT NULL,
-                post_type VARCHAR(30) DEFAULT 'post',
-                image_url VARCHAR(255),
-                likes_count INT DEFAULT 0,
-                comments_count INT DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """,
+                   CREATE TABLE IF NOT EXISTS posts (
+                       id SERIAL PRIMARY KEY,
+                       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                       title VARCHAR(120),
+                       content TEXT NOT NULL,
+                       post_type VARCHAR(30) DEFAULT 'post',
+                       image_url VARCHAR(255),
+                       likes_count INT DEFAULT 0,
+                       comments_count INT DEFAULT 0,
+                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                   );
+               """,
 
         "comments": """
             CREATE TABLE IF NOT EXISTS comments (
@@ -156,17 +156,17 @@ def get_schema_queries():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, post_id)
             );
-        """,#
+        """,
 
         "connections": """
-            CREATE TABLE IF NOT EXISTS user_connections (
-                id SERIAL PRIMARY KEY,
-                follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                following_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(follower_id, following_id)
-            );
-        """,
+                   CREATE TABLE IF NOT EXISTS user_connections (
+                       id SERIAL PRIMARY KEY,
+                       follower_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                       following_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                       UNIQUE(follower_id, following_id)
+                   );
+               """,
 
         "user_skills": """
             CREATE TABLE IF NOT EXISTS user_skills (
@@ -199,9 +199,31 @@ def get_schema_queries():
             );
         """,
 
-        "posts_indexes": """CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
-                CREATE INDEX IF NOT EXISTS idx_posts_type ON posts(post_type);
-                CREATE INDEX IF NOT EXISTS idx_posts_create_at ON posts(created_at DESC);""",
+        "posts_indexes":"""
+            CREATE INDEX IF NOT EXISTS idx_posts_user_id ON posts(user_id);
+            CREATE INDEX IF NOT EXISTS idx_posts_type ON posts(post_type);
+            CREATE INDEX IF NOT EXISTS idx_posts_create_at ON posts(created_at DESC);
+            
+        """,
+
+        "post_views": """
+                CREATE TABLE IF NOT EXISTS post_views (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    post_id INTEGER REFERENCES posts(id) ON DELETE CASCADE,
+                    ip_address VARCHAR(45) NOT NULL,
+                    viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_view
+                ON post_views(user_id , post_id)
+                WHERE user_id IS NOT NULL;
+
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_ip_view
+                ON post_views(ip_address, post_id)
+                WHERE user_id IS NULL;    
+
+            """,
 
         "unique_subscriptions": """
             CREATE UNIQUE INDEX IF NOT EXISTS unique_active_user_subscription
@@ -214,22 +236,30 @@ def get_schema_queries():
                        ADD COLUMN IF NOT EXISTS resume_file_url VARCHAR (255),
                        ADD COLUMN IF NOT EXISTS social_links JSONB DEFAULT '{}',
                        ADD COLUMN IF NOT EXISTS specialty VARCHAR(100); 
-        """,
+                   """,
 
-        "update_posts_v1": """ALTER TABLE posts
-                            ADD COLUMN IF NOT EXISTS extra_data JSONB DEFAULT '{}',
-                            ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE,  --اینجا اسم و عنوان پست باید به فرمت مناسب داشته باشه یعنی مثلا فاصله نداشته باشه و...
-                            ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE,
-                            ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0;""",
+        "update_posts_v1": """
+                            ALTER TABLE posts
+                                ADD COLUMN IF NOT EXISTS extra_data JSONB DEFAULT '{}',
+                                ADD COLUMN IF NOT EXISTS slug VARCHAR(255) UNIQUE,  --اینجا اسم و عنوان پست باید به فرمت مناسب داشته باشه یعنی مثلا فاصله نداشته باشه و...
+                                ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE,
+                                ADD COLUMN IF NOT EXISTS view_count INT DEFAULT 0;
 
-        "update_posts_v2":"""DELETE FROM posts
-            WHERE user_id NOT IN (SELECT ID FROM users);
-            ALTER TABLE posts DROP CONSTRAINT IF EXISTS fk_posts_user;
-            ALTER TABLE posts
-            ADD CONSTRAINT fk_posts_user
-            FOREIGN KEY(user_id) REFERENCES users(id)
-            ON DELETE CASCADE;""",
+                """,
+
+        "update_posts_v2": """DELETE FROM posts
+                WHERE user_id NOT IN (SELECT ID FROM users);
+                ALTER TABLE posts DROP CONSTRAINT IF EXISTS fk_posts_user;
+                ALTER TABLE posts
+                ADD CONSTRAINT fk_posts_user
+                FOREIGN KEY(user_id) REFERENCES users(id)
+                ON DELETE CASCADE;""",
 
         "update_user_skills_v1": """ALTER TABLE user_skills 
                 ADD COLUMN IF NOT EXISTS description TEXT""",
+
+        "update_comments_v1": """
+                ALTER TABLE comments
+                    ADD COLUM IF NOT EXISTS parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE;
+            """,
     }
