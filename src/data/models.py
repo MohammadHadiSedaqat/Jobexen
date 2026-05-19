@@ -106,7 +106,7 @@ def get_schema_queries():
                         is_active BOOLEAN DEFAULT TRUE,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     );
-                """,#this
+                """,
 
         "password_recovery": """
         CREATE TABLE IF NOT EXISTS password_recovery (
@@ -146,7 +146,7 @@ def get_schema_queries():
                 content TEXT NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-        """,#this
+        """,
 
         "likes": """
             CREATE TABLE IF NOT EXISTS likes (
@@ -156,7 +156,7 @@ def get_schema_queries():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, post_id)
             );
-        """,#this
+        """,#
 
         "connections": """
             CREATE TABLE IF NOT EXISTS user_connections (
@@ -166,7 +166,7 @@ def get_schema_queries():
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(follower_id, following_id)
             );
-        """,#this
+        """,
 
         "user_skills": """
             CREATE TABLE IF NOT EXISTS user_skills (

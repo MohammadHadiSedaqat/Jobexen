@@ -1,4 +1,3 @@
-
 import jwt
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext

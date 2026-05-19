@@ -16,16 +16,6 @@ def get_available_plans(
 ):
     return user_sub_service.get_subscription_plan()
 
-@router.post("/subscribe", response_model=UserSubscriptionPurchaseResponse, status_code=status.HTTP_201_CREATED)
-def subscribe_to_plan(
-        user_sub_service: UserSubscriptionService = Depends(UserSubscriptionService),
-        current_user: Any = Depends(AuthService.get_current_user),
-        plan_name: str = Form(...,max_length=100),
-        payment_method : str = Form(...,max_length=100),
-):
-    subscription = user_sub_service.purchase_subscription_by_user(plan_name, payment_method, current_user['id'])
-    return subscription
-
 @router.get("/me", response_model=UserSubscriptionSituation, status_code=status.HTTP_200_OK)
 def get_my_subscription(
         user_sub_service: UserSubscriptionService = Depends(UserSubscriptionService),
@@ -40,6 +30,16 @@ def get_my_payments(
 ):
     payment_history = user_sub_service.show_payment_history(current_user['id'])
     return payment_history
+
+@router.post("/subscribe", response_model=UserSubscriptionPurchaseResponse, status_code=status.HTTP_201_CREATED)
+def subscribe_to_plan(
+        user_sub_service: UserSubscriptionService = Depends(UserSubscriptionService),
+        current_user: Any = Depends(AuthService.get_current_user),
+        plan_name: str = Form(...,max_length=100),
+        payment_method : str = Form(...,max_length=100),
+):
+    subscription = user_sub_service.purchase_subscription_by_user(plan_name, payment_method, current_user['id'])
+    return subscription
 
 @router.patch("/me/cancel")
 def cancel_my_subscription(

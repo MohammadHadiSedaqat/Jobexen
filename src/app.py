@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.api.endpoints.v1 import user_router, subscription_router, user_subscription_router, user_subscription_router
+from jupyterlab_server.pytest_plugin import user_settings_dir
+
+from src.api.endpoints.v1 import user_router, subscription_router, user_subscription_router, user_subscription_router, user_settings_router
 from src.connections.sync_postgres import get_db_connection
 from src.data.models import get_schema_queries
 from fastapi_swagger import patch_fastapi
@@ -36,6 +38,8 @@ app.include_router(user_router.profile_router , prefix="/api/v1")
 app.include_router(subscription_router.router , prefix="/api/v1")
 
 app.include_router(user_subscription_router.router , prefix="/api/v1")
+
+# app.include_router(user_settings_router.router , prefix="/api/v1")
 
 
 @app.on_event("startup")

@@ -1,4 +1,4 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 from src.connections.sync_postgres import get_db_connection
 from typing import Optional, Dict , Any
 import psycopg2.extras
@@ -175,10 +175,26 @@ class UserRepository:
         try:
             cursor.execute(query, params)
             result = cursor.fetchone()
+            conn.commit()
             return result
         except Exception as e:
+            if conn:conn.rollback()
             print(f"Error executing query: {e}")
             return None
+        finally:
+
+            cursor.close()
+            conn.close()
+
+    async def execute_query_all(self, query: str, params: tuple = None):
+        conn = self.get_connection()
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute(query, params)
+            return cursor.fetchall()  # لیست کامل رو برمی‌گردونه
+        except Exception as e:
+            print(f"❌ Error in execute_query_all: {e}")
+            return []
         finally:
             cursor.close()
             conn.close()
@@ -206,6 +222,7 @@ class UserRepository:
 
         mark_used_query = "UPDATE password_recovery SET is_used = TRUE WHERE user_id = %s"
         await self.execute_query(mark_used_query, (user_id,))
+
 
     async def add_experience(self, user_id: int  , exp_data: dict):
         query = """
@@ -245,19 +262,6 @@ class UserRepository:
 
         await self.execute_query(query_link, params_link)
 
-    async def execute_query_all(self, query: str, params: tuple = None):
-        conn = self.get_connection()
-        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        try:
-            cursor.execute(query, params)
-            return cursor.fetchall()  # لیست کامل رو برمی‌گردونه
-        except Exception as e:
-            print(f"❌ Error in execute_query_all: {e}")
-            return []
-        finally:
-            cursor.close()
-            conn.close()
-
     async def get_full_profile(self, user_id: int):
         user_query = "SELECT * FROM users WHERE id = %s"
         user_data = await self.execute_query_fetchone(user_query, (user_id,))
@@ -289,20 +293,27 @@ class UserRepository:
 
     async def update_user(self, user_id: int, user_data: dict):
         if not user_data:
-            return
+            return None
+
         set_clauses =[]
 
-        for key in user_data.keys():
+        excluded_fields = ["experiences", "skills", "education", "social_links"]
+        filtered_data = {k: v for k, v in user_data.items() if k not in excluded_fields}
+
+        if not filtered_data:
+            return None
+
+        for key in filtered_data.keys():
             set_clauses.append(f"{key} = %({key})s")
 
         set_query = ",".join(set_clauses)
 
         query = f"UPDATE users SET {set_query} WHERE id = %(user_id)s RETURNING *"
 
-        params =user_data.copy()
+        params = user_data.copy()
         params['user_id'] = user_id
 
-        updated_user =await self.execute_query_fetchone(query, params)
+        updated_user = await self.execute_query_fetchone(query, params)
         return updated_user
 
     async def update_experience(self, experience_id: int, user_id: int, exp_data: dict):
@@ -322,23 +333,80 @@ class UserRepository:
         updated_experience = await self.execute_query_fetchone(query, params)
         return updated_experience
 
-    async def update_user_skills(self, user_id: int,skill_id:int, skill_data: dict):
-        if not skill_data:
-            return None
-        set_clauses = []
-        for key in skill_data.keys():
-            set_clauses.append(f"{key} = %({key})s")
+    async def edit_user_skill(self, user_id: int, skill_id: int, skill_data: dict):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        set_query = ",".join(set_clauses)
+            update_payload = skill_data.copy()
 
-        query= f"update user_skills set {set_query} where user_id = %(user_id)s and skill_id =%(skill_id)s RETURNING *"
+            new_skill_name: Any
 
-        params = skill_data.copy()
-        params['user_id'] = user_id
-        params['skill_id'] = skill_id
+            if 'skill_name' in update_payload:
+                new_skill_name = update_payload.pop('skill_name')
 
-        updated_user_skills = await self.execute_query_fetchone(query, params)
-        return updated_user_skills
+                cursor.execute("SELECT id FROM skills WHERE name = %s", (new_skill_name,))
+                skill_record = cursor.fetchone()
+
+                if skill_record:
+                    new_skill_id = skill_record['id']
+                else:
+                    cursor.execute(
+                        "INSERT INTO skills (name) VALUES (%s) RETURNING id",
+                        (new_skill_name,)
+                    )
+                    new_skill_id = cursor.fetchone()['id']
+
+                update_payload['skill_id'] = new_skill_id
+
+            if not update_payload:
+                raise HTTPException(
+                    status_code=400,
+                    detail="هیچ فیلد معتبری (skill_name) برای آپدیت ارسال نشده است."
+                )
+
+            set_clauses = []
+            params = []
+
+            for key, value in update_payload.items():
+                set_clauses.append(f"{key} = %s")
+                params.append(value)
+            set_query = ", ".join(set_clauses)
+
+            query = f"""
+                UPDATE user_skills 
+                SET {set_query}
+                WHERE user_id = %s AND skill_id = %s
+                RETURNING *;
+            """
+
+            params.extend([user_id, skill_id])
+
+            cursor.execute(query, tuple(params))
+            result = cursor.fetchone()
+            result['skill_name'] = new_skill_name
+
+            if not result:
+                raise HTTPException(status_code=404, detail="این مهارت در لیست شما پیدا نشد یا متعلق به شما نیست.")
+
+            conn.commit()
+            return dict(result)
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ Unexpected error in skill update Repository: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
 
     async def get_or_create_skill_by_name(self, skill_name:str)->int:
         query = """
@@ -369,7 +437,7 @@ class UserRepository:
 
     async def delete_user_skills(self, user_id: int, skill_id:int):
         query = "delete from user_skills where user_id = %s AND skill_id = %s returning skill_id"
-        return await self.execute_query_fetchone(query, (skill_id, user_id))
+        return await self.execute_query_fetchone(query, (user_id, skill_id))
 
     async def add_user_education(self, user_id: int, user_data: dict):
         conn = None
@@ -619,3 +687,137 @@ class UserRepository:
             if conn:
                 cursor.close()
                 conn.close()
+
+    async def get_user_experience(self, user_id: int):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                        SELECT * FROM user_experiences
+                        WHERE user_id = %s 
+                        ORDER BY start_date DESC, end_date DESC;
+                    """
+
+            cursor.execute(query, (user_id,))
+            records = cursor.fetchall()
+
+            return records
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ Error in SubRepository.: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
+
+    async def search_user_experience(self, user_id: int, search_query: str):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                    SELECT * FROM user_experiences
+                    WHERE user_id = %s AND (
+                        company_name ILIKE %s OR 
+                        job_title ILIKE %s OR 
+                        employment_type ILIKE %s
+                    )
+                    ORDER BY start_date DESC, end_date DESC;
+                """
+
+            search_param = f"%{search_query}%"
+            params = (user_id, search_param, search_param, search_param)
+
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            return records
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()
+
+    async def get_user_skill(self, user_id: int):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                        SELECT * FROM user_skills
+                        INNER JOIN skills ON user_skills.skill_id = skills.id
+                        WHERE user_skills.user_id = %s
+                        ORDER BY user_skills.level DESC;
+                    """
+            cursor.execute(query, (user_id,))
+            records = cursor.fetchall()
+
+            return records
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            print(f"❌ Error in SubRepository.: {e}")
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                cursor.close()
+                conn.close()
+
+    async def search_user_skill(self, user_id: int, search_query: str):
+        conn = None
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+
+            query = """
+                    SELECT * FROM user_skills
+                    INNER JOIN skills ON user_skills.skill_id = skills.id
+                    WHERE user_skills.user_id = %s AND(
+                        skills.name ILIKE %s OR
+                        user_skills.level ILIKE %s
+                    )
+                    ORDER BY user_skills.level DESC;
+            """
+
+            search_param = f"%{search_query}%"
+            params = (user_id, search_param, search_param)
+
+            cursor.execute(query, params)
+            records = cursor.fetchall()
+            return records
+
+        except HTTPException as e:
+            if conn: conn.rollback()
+            raise e
+
+        except Exception as e:
+            if conn: conn.rollback()
+            raise HTTPException(status_code=500, detail="Internal Server Error")
+
+        finally:
+            if conn:
+                conn.close()
+                cursor.close()

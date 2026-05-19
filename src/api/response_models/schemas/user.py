@@ -41,8 +41,8 @@ class UserResponse(UserBase):
 
 
 class UserLogin(BaseModel):
-    identifier: str
-    password: str
+    username: str = Field(...)
+    password: str = Field(...)
 
 
 class ForgetPasswordRequest(BaseModel):
@@ -134,13 +134,20 @@ class UserSkillCreate(BaseModel):
 
 
 class UserSkillUpdate(BaseModel):
-    # skill_id:int
     skill_name: Optional[str] = Field(None, min_length=3, max_length=100)
     level: Optional[SkillLevel] = None
     description: Optional[str] = None
 
     class Config:
         from_attributes = True
+
+class UserSkillResponse(BaseModel):
+    user_id: int
+    skill_id: int
+    name: str
+    level: str
+    description: str
+
 
 
 class UserSkillShow(BaseModel):
@@ -166,7 +173,7 @@ class UserMinInfo(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    username: Optional[str]= Field(None,min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$", description="alphanumeric username")
+    username: Optional[str]= Field(None, min_length=3, max_length=30, pattern=r"^[a-zA-Z0-9_]+$", examples=["alphanumeric username"])
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     city: Optional[str] = None
